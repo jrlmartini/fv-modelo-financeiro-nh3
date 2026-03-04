@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { ModelInputs } from '@/lib/types';
 
 interface Props {
@@ -17,36 +17,96 @@ const sections = [
   { id: 'capital', label: '6) Capital Structure' }
 ] as const;
 
-function toNumber(value: string, fallback: number): number {
+function parseMaybeNumber(value: string): number | null {
   const normalized = value.replace(',', '.').trim();
-  if (normalized === '') return fallback;
+  if (normalized === '') return null;
   const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function NumberField({
   label,
   value,
   onChange,
-  step = 'any',
   readOnly = false
 }: {
   label: string;
   value: number;
   onChange?: (value: number) => void;
-  step?: string;
   readOnly?: boolean;
 }) {
+  const [text, setText] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(String(value));
+  }, [value, focused]);
+
   return (
     <label className="space-y-1 text-xs text-slate-200">
       <span>{label}</span>
       <input
         type="text"
         inputMode="decimal"
-        step={step}
         readOnly={readOnly}
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(e) => onChange?.(toNumber(e.target.value, value))}
+        value={text}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          const parsed = parseMaybeNumber(text);
+          if (parsed === null) {
+            setText('0');
+            onChange?.(0);
+          }
+        }}
+        onChange={(e) => {
+          const nextText = e.target.value;
+          setText(nextText);
+          const parsed = parseMaybeNumber(nextText);
+          if (parsed !== null) onChange?.(parsed);
+        }}
+        className="w-full"
+      />
+    </label>
+  );
+}
+
+function RampUpField({
+  value,
+  onChange
+}: {
+  value: number[];
+  onChange: (next: number[]) => void;
+}) {
+  const [text, setText] = useState(value.join(','));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setText(value.join(','));
+  }, [value, focused]);
+
+  return (
+    <label className="space-y-1 text-xs text-slate-200 md:col-span-2">
+      <span>Ramp-up (csv, ex: 0.6,0.9,1)</span>
+      <input
+        value={text}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          if (!text.trim()) {
+            setText('0');
+            onChange([0]);
+          }
+        }}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setText(raw);
+          const parts = raw
+            .split(',')
+            .map((x) => parseMaybeNumber(x))
+            .filter((x): x is number => x !== null && x >= 0);
+          if (parts.length > 0) onChange(parts);
+        }}
         className="w-full"
       />
     </label>
@@ -89,20 +149,7 @@ export function WizardSlides({ inputs, setInputs }: Props) {
           </label>
           <NumberField label="Vida do projeto (anos)" value={inputs.projectLife} onChange={(v) => patch('projectLife', Math.max(1, Math.round(v)))} />
           <NumberField label="Anos de construção" value={inputs.constructionYears} onChange={(v) => patch('constructionYears', Math.max(1, Math.round(v)))} />
-          <label className="space-y-1 text-xs text-slate-200 md:col-span-2">
-            <span>Ramp-up (csv, ex: 0.6,0.9,1)</span>
-            <input
-              value={inputs.rampUp.join(',')}
-              onChange={(e) => {
-                const next = e.target.value
-                  .split(',')
-                  .map((x) => Number(x.replace(',', '.').trim()))
-                  .filter((x) => Number.isFinite(x) && x >= 0);
-                if (next.length) patch('rampUp', next);
-              }}
-              className="w-full"
-            />
-          </label>
+          <RampUpField value={inputs.rampUp} onChange={(v) => patch('rampUp', v)} />
         </div>
       </Section>
 

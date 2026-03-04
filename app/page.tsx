@@ -17,6 +17,7 @@ export default function HomePage() {
   const [result, setResult] = useState<ModelOutput | null>(null);
   const [saved, setSaved] = useState<SavedScenario[]>([]);
   const [compareId, setCompareId] = useState('');
+  const [isResultsModalOpen, setIsResultsModalOpen] = useState(false);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(CURRENT_KEY);
@@ -32,7 +33,17 @@ export default function HomePage() {
   const liveKpis = useMemo(() => runModel(inputs).kpis, [inputs]);
 
   const runScenario = () => {
-    setResult(runModel(inputs));
+    const next = runModel(inputs);
+    setResult(next);
+    setIsResultsModalOpen(true);
+  };
+
+  const openResultsFromSidebar = () => {
+    if (!result) {
+      const next = runModel(inputs);
+      setResult(next);
+    }
+    setIsResultsModalOpen(true);
   };
 
   const exportCsv = () => {
@@ -63,48 +74,63 @@ export default function HomePage() {
   const other = saved.find((s) => s.id === compareId) ?? null;
 
   return (
-    <main className="flex min-h-screen bg-base">
-      <div className="flex-1">
-        <header className="border-b border-slate-800 px-5 py-4">
-          <h1 className="text-xl font-semibold tracking-tight">Fast Scenario Simulator</h1>
-          <p className="text-xs text-slate-400">Página única: preencha, rode e veja resultados abaixo</p>
-          {errors.length ? (
-            <p className="mt-2 rounded border border-red-500/50 bg-red-950/30 px-2 py-1 text-xs text-red-200">
-              {errors.join(' | ')}
-            </p>
-          ) : null}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button className="rounded-md bg-accent px-3 py-2 text-xs font-semibold text-slate-900" onClick={runScenario}>
-              Rodar cenário
-            </button>
-            <button className="rounded-md border border-slate-700 px-3 py-2 text-xs" onClick={onSave}>Salvar cenário</button>
-            <button className="rounded-md border border-slate-700 px-3 py-2 text-xs" onClick={exportCsv} disabled={!result}>Export CSV</button>
-            <button className="rounded-md border border-slate-700 px-3 py-2 text-xs" onClick={exportJson} disabled={!result}>Export JSON</button>
-          </div>
-        </header>
+    <>
+      <main className="flex min-h-screen bg-base">
+        <div className="flex-1">
+          <header className="border-b border-slate-800 px-5 py-4">
+            <h1 className="text-xl font-semibold tracking-tight">Fast Scenario Simulator</h1>
+            <p className="text-xs text-slate-400">Página única: preencha, rode e veja resultados em popup</p>
+            {errors.length ? (
+              <p className="mt-2 rounded border border-red-500/50 bg-red-950/30 px-2 py-1 text-xs text-red-200">
+                {errors.join(' | ')}
+              </p>
+            ) : null}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button className="rounded-md bg-accent px-3 py-2 text-xs font-semibold text-slate-900" onClick={runScenario}>
+                Rodar cenário
+              </button>
+              <button className="rounded-md border border-slate-700 px-3 py-2 text-xs" onClick={onSave}>Salvar cenário</button>
+              <button className="rounded-md border border-slate-700 px-3 py-2 text-xs" onClick={exportCsv} disabled={!result}>Export CSV</button>
+              <button className="rounded-md border border-slate-700 px-3 py-2 text-xs" onClick={exportJson} disabled={!result}>Export JSON</button>
+            </div>
+          </header>
 
-        <WizardSlides inputs={inputs} setInputs={setInputs} />
+          <WizardSlides inputs={inputs} setInputs={setInputs} />
 
-        {result ? (
-          <section className="space-y-4 px-5 pb-8">
-            <div className="rounded-lg border border-slate-700 bg-card p-4">
-              <h2 className="mb-2 text-sm font-semibold">Resultados do cenário (última execução)</h2>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div><h3 className="mb-1 text-xs font-semibold">EBITDA</h3><SimpleChart values={result.rows.map((r) => r.ebitda)} /></div>
-                <div><h3 className="mb-1 text-xs font-semibold">CFADS</h3><SimpleChart values={result.rows.map((r) => r.cfads)} color="#34d399" /></div>
-                <div><h3 className="mb-1 text-xs font-semibold">Debt Balance</h3><SimpleChart values={result.rows.map((r) => r.debtBalanceEnd)} color="#fbbf24" /></div>
-                <div>
-                  <h3 className="mb-1 text-xs font-semibold">FCFE Cumulativo</h3>
-                  <SimpleChart values={result.rows.reduce<number[]>((acc, r, i) => {
-                    const last = i ? acc[i - 1] : 0;
-                    acc.push(last + r.fcfe);
-                    return acc;
-                  }, [])} color="#f472b6" />
-                </div>
+          <section className="px-5 pb-8">
+            <div className="rounded-lg border border-dashed border-slate-700 bg-card p-4 text-xs text-slate-400">
+              Clique em <strong>Rodar cenário</strong> ou em <strong>Ver Resultados</strong> na sidebar para abrir o popup.
+            </div>
+          </section>
+        </div>
+        <KPIBar kpis={liveKpis} onViewResults={openResultsFromSidebar} />
+      </main>
+
+      {isResultsModalOpen && result ? (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4">
+          <div className="max-h-[95vh] w-full max-w-6xl overflow-auto rounded-lg border border-slate-700 bg-base p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Resultados do cenário (última execução)</h2>
+              <button className="rounded-md border border-slate-700 px-3 py-1 text-xs" onClick={() => setIsResultsModalOpen(false)}>
+                Fechar
+              </button>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div><h3 className="mb-1 text-xs font-semibold">EBITDA</h3><SimpleChart values={result.rows.map((r) => r.ebitda)} xLabelStart={1} /></div>
+              <div><h3 className="mb-1 text-xs font-semibold">CFADS</h3><SimpleChart values={result.rows.map((r) => r.cfads)} color="#34d399" xLabelStart={1} /></div>
+              <div><h3 className="mb-1 text-xs font-semibold">Debt Balance</h3><SimpleChart values={result.rows.map((r) => r.debtBalanceEnd)} color="#fbbf24" xLabelStart={1} /></div>
+              <div>
+                <h3 className="mb-1 text-xs font-semibold">FCFE Cumulativo</h3>
+                <SimpleChart values={result.rows.reduce<number[]>((acc, r, i) => {
+                  const last = i ? acc[i - 1] : 0;
+                  acc.push(last + r.fcfe);
+                  return acc;
+                }, [])} color="#f472b6" xLabelStart={1} />
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-700 bg-card p-4">
+            <div className="mt-4 rounded-lg border border-slate-700 bg-card p-4">
               <h2 className="mb-2 text-sm font-semibold">Comparar com cenário salvo</h2>
               <select value={compareId} onChange={(e) => setCompareId(e.target.value)} className="mb-3 w-full max-w-sm">
                 <option value="">Selecione</option>
@@ -113,7 +139,7 @@ export default function HomePage() {
               <ScenarioCompare base={{ id: 'current', name: inputs.name, createdAt: '', inputs }} other={other} />
             </div>
 
-            <div className="overflow-auto rounded-lg border border-slate-700">
+            <div className="mt-4 overflow-auto rounded-lg border border-slate-700">
               <table className="min-w-full text-xs">
                 <thead className="sticky top-0 bg-slate-900">
                   <tr>
@@ -141,16 +167,9 @@ export default function HomePage() {
                 </tbody>
               </table>
             </div>
-          </section>
-        ) : (
-          <section className="px-5 pb-8">
-            <div className="rounded-lg border border-dashed border-slate-700 bg-card p-4 text-xs text-slate-400">
-              Clique em <strong>Rodar cenário</strong> para gerar resultados abaixo sem sair desta página.
-            </div>
-          </section>
-        )}
-      </div>
-      <KPIBar kpis={liveKpis} />
-    </main>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

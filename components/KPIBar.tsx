@@ -1,10 +1,15 @@
 'use client';
 
-import Link from 'next/link';
 import type { ModelKpis } from '@/lib/types';
 import { formatPct } from './format';
 
-export function KPIBar({ kpis }: { kpis: ModelKpis }) {
+export function KPIBar({
+  kpis,
+  onViewResults
+}: {
+  kpis: ModelKpis;
+  onViewResults: () => void;
+}) {
   const cards = [
     ['Project IRR', formatPct(kpis.irrUnlevered)],
     ['Equity IRR', formatPct(kpis.irrEquity)],
@@ -30,9 +35,13 @@ export function KPIBar({ kpis }: { kpis: ModelKpis }) {
           </div>
         ))}
       </div>
-      <Link href="/results" className="block rounded-md bg-accent py-2 text-center text-xs font-semibold text-slate-900">
+      <button
+        type="button"
+        onClick={onViewResults}
+        className="block w-full rounded-md bg-accent py-2 text-center text-xs font-semibold text-slate-900"
+      >
         Ver Resultados
-      </Link>
+      </button>
     </aside>
   );
 }
