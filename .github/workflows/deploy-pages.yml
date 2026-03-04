@@ -24,7 +24,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Configure basePath
         run: echo "NEXT_PUBLIC_BASE_PATH=/${GITHUB_REPOSITORY#*/}" >> "$GITHUB_ENV"
