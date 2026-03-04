@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { ModelKpis } from '@/lib/types';
 import { formatPct } from './format';
 
@@ -27,9 +28,9 @@ export function KPIBar({ kpis }: { kpis: ModelKpis }) {
           </div>
         ))}
       </div>
-      <a href="/results" className="block rounded bg-accent text-center font-semibold text-slate-900">
+      <Link href="/results" className="block rounded bg-accent text-center font-semibold text-slate-900">
         Ver Resultados
-      </a>
+      </Link>
     </aside>
   );
 }
