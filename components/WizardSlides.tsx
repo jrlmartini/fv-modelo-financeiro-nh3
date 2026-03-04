@@ -1,96 +1,186 @@
 'use client';
 
-import { useMemo } from 'react';
+import type { ReactNode } from 'react';
 import type { ModelInputs } from '@/lib/types';
 
 interface Props {
   inputs: ModelInputs;
   setInputs: (next: ModelInputs) => void;
-  step: number;
-  setStep: (n: number) => void;
 }
 
-const total = 6;
+const sections = [
+  { id: 'projeto', label: '1) Projeto' },
+  { id: 'capex', label: '2) CAPEX' },
+  { id: 'receita', label: '3) Operação / Receita' },
+  { id: 'opex', label: '4) OPEX' },
+  { id: 'impostos', label: '5) Impostos' },
+  { id: 'capital', label: '6) Capital Structure' }
+] as const;
 
-export function WizardSlides({ inputs, setInputs, step, setStep }: Props) {
-  const progress = useMemo(() => ((step + 1) / total) * 100, [step]);
+function toNumber(value: string, fallback: number): number {
+  const normalized = value.replace(',', '.').trim();
+  if (normalized === '') return fallback;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
 
+function NumberField({
+  label,
+  value,
+  onChange,
+  step = 'any',
+  readOnly = false
+}: {
+  label: string;
+  value: number;
+  onChange?: (value: number) => void;
+  step?: string;
+  readOnly?: boolean;
+}) {
+  return (
+    <label className="space-y-1 text-xs text-slate-200">
+      <span>{label}</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        step={step}
+        readOnly={readOnly}
+        value={Number.isFinite(value) ? value : 0}
+        onChange={(e) => onChange?.(toNumber(e.target.value, value))}
+        className="w-full"
+      />
+    </label>
+  );
+}
+
+export function WizardSlides({ inputs, setInputs }: Props) {
   function patch<K extends keyof ModelInputs>(key: K, value: ModelInputs[K]) {
     setInputs({ ...inputs, [key]: value });
   }
 
   return (
-    <section className="space-y-5 p-6">
-      <div>
-        <p className="text-sm text-slate-400">Passo {step + 1} de {total}</p>
-        <div className="mt-2 h-2 w-full rounded bg-slate-800">
-          <div className="h-2 rounded bg-accent" style={{ width: `${progress}%` }} />
+    <section className="space-y-4 p-5 text-sm">
+      <nav className="sticky top-0 z-10 rounded-md border border-slate-700 bg-card/95 p-2 backdrop-blur">
+        <div className="flex flex-wrap gap-2">
+          {sections.map((section) => (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className="rounded border border-slate-600 px-2 py-1 text-xs text-slate-300 transition hover:border-accent hover:text-white"
+            >
+              {section.label}
+            </a>
+          ))}
         </div>
-      </div>
+      </nav>
 
-      {step === 0 && (
+      <Section id="projeto" title="Projeto">
         <div className="grid gap-3 md:grid-cols-2">
-          <label>Nome do cenário<input value={inputs.name} onChange={(e) => patch('name', e.target.value)} /></label>
-          <label>Moeda<select value={inputs.currency} onChange={(e) => patch('currency', e.target.value as 'BRL' | 'USD')}><option>BRL</option><option>USD</option></select></label>
-          <label>Vida do projeto<input type="number" value={inputs.projectLife} onChange={(e) => patch('projectLife', Number(e.target.value))} /></label>
-          <label>Anos de construção<input type="number" value={inputs.constructionYears} onChange={(e) => patch('constructionYears', Number(e.target.value))} /></label>
-          <label className="md:col-span-2">Ramp-up (csv ex: 0.6,0.9,1)
-            <input value={inputs.rampUp.join(',')} onChange={(e) => patch('rampUp', e.target.value.split(',').map(Number).filter((x) => !Number.isNaN(x)))} />
+          <label className="space-y-1 text-xs text-slate-200">
+            <span>Nome do cenário</span>
+            <input value={inputs.name} onChange={(e) => patch('name', e.target.value)} className="w-full" />
+          </label>
+          <label className="space-y-1 text-xs text-slate-200">
+            <span>Moeda</span>
+            <select value={inputs.currency} onChange={(e) => patch('currency', e.target.value as 'BRL' | 'USD')} className="w-full">
+              <option>BRL</option>
+              <option>USD</option>
+            </select>
+          </label>
+          <NumberField label="Vida do projeto (anos)" value={inputs.projectLife} onChange={(v) => patch('projectLife', Math.max(1, Math.round(v)))} />
+          <NumberField label="Anos de construção" value={inputs.constructionYears} onChange={(v) => patch('constructionYears', Math.max(1, Math.round(v)))} />
+          <label className="space-y-1 text-xs text-slate-200 md:col-span-2">
+            <span>Ramp-up (csv, ex: 0.6,0.9,1)</span>
+            <input
+              value={inputs.rampUp.join(',')}
+              onChange={(e) => {
+                const next = e.target.value
+                  .split(',')
+                  .map((x) => Number(x.replace(',', '.').trim()))
+                  .filter((x) => Number.isFinite(x) && x >= 0);
+                if (next.length) patch('rampUp', next);
+              }}
+              className="w-full"
+            />
           </label>
         </div>
-      )}
+      </Section>
 
-      {step === 1 && (
+      <Section id="capex" title="CAPEX">
         <div className="grid gap-3 md:grid-cols-2">
-          <label>CAPEX total<input type="number" value={inputs.capexTotal} onChange={(e) => patch('capexTotal', Number(e.target.value))} /></label>
-          <label>Depreciação (anos)<input type="number" value={inputs.depreciationLife} onChange={(e) => patch('depreciationLife', Number(e.target.value))} /></label>
-          <label>Modo CAPEX manutenção<select value={inputs.maintCapexMode} onChange={(e) => patch('maintCapexMode', e.target.value as 'fixed' | 'percent')}><option value="fixed">Valor fixo</option><option value="percent">% do CAPEX</option></select></label>
-          <label>{inputs.maintCapexMode === 'fixed' ? 'CAPEX manutenção / ano' : '% do CAPEX'}<input type="number" value={inputs.maintCapexValue} onChange={(e) => patch('maintCapexValue', Number(e.target.value))} /></label>
+          <NumberField label="CAPEX total" value={inputs.capexTotal} onChange={(v) => patch('capexTotal', Math.max(0, v))} />
+          <NumberField label="Depreciação (anos)" value={inputs.depreciationLife} onChange={(v) => patch('depreciationLife', Math.max(1, Math.round(v)))} />
+          <label className="space-y-1 text-xs text-slate-200">
+            <span>Modo CAPEX manutenção</span>
+            <select value={inputs.maintCapexMode} onChange={(e) => patch('maintCapexMode', e.target.value as 'fixed' | 'percent')} className="w-full">
+              <option value="fixed">Valor fixo</option>
+              <option value="percent">% do CAPEX</option>
+            </select>
+          </label>
+          <NumberField
+            label={inputs.maintCapexMode === 'fixed' ? 'CAPEX manutenção / ano' : '% do CAPEX'}
+            value={inputs.maintCapexValue}
+            onChange={(v) => patch('maintCapexValue', Math.max(0, v))}
+          />
         </div>
-      )}
+      </Section>
 
-      {step === 2 && (
+      <Section id="receita" title="Operação / Receita">
         <div className="grid gap-3 md:grid-cols-2">
-          <label>Capacidade plena (t/ano)<input type="number" value={inputs.capacityFull} onChange={(e) => patch('capacityFull', Number(e.target.value))} /></label>
-          <label>Preço por tonelada<input type="number" value={inputs.price0} onChange={(e) => patch('price0', Number(e.target.value))} /></label>
-          <label>Crescimento preço (decimal)<input type="number" step="0.01" value={inputs.priceGrowth} onChange={(e) => patch('priceGrowth', Number(e.target.value))} /></label>
+          <NumberField label="Capacidade plena (t/ano)" value={inputs.capacityFull} onChange={(v) => patch('capacityFull', Math.max(0, v))} />
+          <NumberField label="Preço por tonelada" value={inputs.price0} onChange={(v) => patch('price0', Math.max(0, v))} />
+          <NumberField label="Crescimento preço (decimal)" value={inputs.priceGrowth} onChange={(v) => patch('priceGrowth', v)} />
         </div>
-      )}
+      </Section>
 
-      {step === 3 && (
+      <Section id="opex" title="OPEX">
         <div className="grid gap-3 md:grid-cols-2">
-          <label>OPEX fixo anual<input type="number" value={inputs.opexFixed} onChange={(e) => patch('opexFixed', Number(e.target.value))} /></label>
-          <label>OPEX variável por tonelada<input type="number" value={inputs.opexVariable} onChange={(e) => patch('opexVariable', Number(e.target.value))} /></label>
-          <label>Crescimento OPEX (decimal)<input type="number" step="0.01" value={inputs.opexGrowth} onChange={(e) => patch('opexGrowth', Number(e.target.value))} /></label>
+          <NumberField label="OPEX fixo anual" value={inputs.opexFixed} onChange={(v) => patch('opexFixed', Math.max(0, v))} />
+          <NumberField label="OPEX variável por tonelada" value={inputs.opexVariable} onChange={(v) => patch('opexVariable', Math.max(0, v))} />
+          <NumberField label="Crescimento OPEX (decimal)" value={inputs.opexGrowth} onChange={(v) => patch('opexGrowth', v)} />
         </div>
-      )}
+      </Section>
 
-      {step === 4 && (
+      <Section id="impostos" title="Impostos">
         <div className="grid gap-3 md:grid-cols-2">
-          <label>Sales tax efetivo (0-0.8)<input type="number" step="0.01" value={inputs.salesTax} onChange={(e) => patch('salesTax', Number(e.target.value))} /></label>
-          <label>Income tax efetivo (0-0.8)<input type="number" step="0.01" value={inputs.incomeTax} onChange={(e) => patch('incomeTax', Number(e.target.value))} /></label>
+          <NumberField label="Sales tax efetivo (0-0.8)" value={inputs.salesTax} onChange={(v) => patch('salesTax', Math.max(0, Math.min(0.8, v)))} />
+          <NumberField label="Income tax efetivo (0-0.8)" value={inputs.incomeTax} onChange={(v) => patch('incomeTax', Math.max(0, Math.min(0.8, v)))} />
         </div>
-      )}
+      </Section>
 
-      {step === 5 && (
+      <Section id="capital" title="Capital Structure">
         <div className="grid gap-3 md:grid-cols-2">
-          <label>Debt % (0-0.95)<input type="number" step="0.01" value={inputs.debtPct} onChange={(e) => {
-            const debt = Number(e.target.value);
-            patch('debtPct', debt);
-            patch('equityPct', 1 - debt);
-          }} /></label>
-          <label>Equity %<input type="number" step="0.01" value={inputs.equityPct} readOnly /></label>
-          <label>Juros efetivos a.a.<input type="number" step="0.01" value={inputs.interestRate} onChange={(e) => patch('interestRate', Number(e.target.value))} /></label>
-          <label>Tenor (anos)<input type="number" value={inputs.tenor} onChange={(e) => patch('tenor', Number(e.target.value))} /></label>
-          <label>Carência (anos)<input type="number" value={inputs.graceYears} onChange={(e) => patch('graceYears', Number(e.target.value))} /></label>
-          <label>Amortização<select value={inputs.amortization} onChange={(e) => patch('amortization', e.target.value as 'PRICE' | 'SAC')}><option value="PRICE">Anuidade / PRICE</option><option value="SAC">SAC</option></select></label>
+          <NumberField
+            label="Debt % (0-0.95)"
+            value={inputs.debtPct}
+            onChange={(v) => {
+              const debt = Math.max(0, Math.min(0.95, v));
+              patch('debtPct', debt);
+              patch('equityPct', Number((1 - debt).toFixed(4)));
+            }}
+          />
+          <NumberField label="Equity %" value={inputs.equityPct} readOnly />
+          <NumberField label="Juros efetivos a.a." value={inputs.interestRate} onChange={(v) => patch('interestRate', Math.max(0, v))} />
+          <NumberField label="Tenor (anos)" value={inputs.tenor} onChange={(v) => patch('tenor', Math.max(1, Math.round(v)))} />
+          <NumberField label="Carência (anos)" value={inputs.graceYears} onChange={(v) => patch('graceYears', Math.max(0, Math.round(v)))} />
+          <label className="space-y-1 text-xs text-slate-200">
+            <span>Amortização</span>
+            <select value={inputs.amortization} onChange={(e) => patch('amortization', e.target.value as 'PRICE' | 'SAC')} className="w-full">
+              <option value="PRICE">Anuidade / PRICE</option>
+              <option value="SAC">SAC</option>
+            </select>
+          </label>
         </div>
-      )}
+      </Section>
+    </section>
+  );
+}
 
-      <div className="flex justify-between">
-        <button className="border border-slate-700" disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>Back</button>
-        <button className="bg-accent text-slate-900" disabled={step === total - 1} onClick={() => setStep(Math.min(total - 1, step + 1))}>Next</button>
-      </div>
+function Section({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  return (
+    <section id={id} className="scroll-mt-16 rounded-lg border border-slate-700 bg-card p-4">
+      <h2 className="mb-3 text-sm font-semibold text-slate-100">{title}</h2>
+      {children}
     </section>
   );
 }

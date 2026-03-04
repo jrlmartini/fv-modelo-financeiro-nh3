@@ -15,20 +15,22 @@ export function KPIBar({ kpis }: { kpis: ModelKpis }) {
   ];
 
   return (
-    <aside className="sticky top-0 h-screen w-full max-w-sm space-y-3 border-l border-slate-800 bg-slate-950/80 p-4">
-      <h3 className="text-lg font-semibold">KPIs ao vivo</h3>
+    <aside className="sticky top-0 h-screen w-full max-w-xs space-y-2 border-l border-slate-800 bg-slate-950/85 p-3 text-xs">
+      <h3 className="text-sm font-semibold">KPIs ao vivo</h3>
       {kpis.alertLowDscr ? (
-        <p className="rounded bg-amber-900/30 p-2 text-xs text-amber-200">Alerta: DSCR mínimo abaixo de 1.0</p>
+        <p className="rounded border border-amber-700/40 bg-amber-900/20 p-2 text-[11px] text-amber-200">
+          Alerta: DSCR mínimo abaixo de 1.0
+        </p>
       ) : null}
       <div className="grid grid-cols-2 gap-2">
         {cards.map(([label, value]) => (
-          <div key={label} className="rounded border border-slate-700 bg-card p-3">
-            <p className="text-xs text-slate-400">{label}</p>
-            <p className="text-sm font-semibold">{value}</p>
+          <div key={label} className="rounded-md border border-slate-700 bg-card p-2">
+            <p className="text-[10px] text-slate-400">{label}</p>
+            <p className="text-xs font-semibold text-slate-100">{value}</p>
           </div>
         ))}
       </div>
-      <Link href="/results" className="block rounded bg-accent text-center font-semibold text-slate-900">
+      <Link href="/results" className="block rounded-md bg-accent py-2 text-center text-xs font-semibold text-slate-900">
         Ver Resultados
       </Link>
     </aside>
