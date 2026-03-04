@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: #03131e;
+  color: #f2f2f2;
+  font-family: Outfit, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+input, select {
+  @apply rounded-md border px-3 py-2 text-sm;
+  background: #071724;
+  border-color: #214059;
+  color: #f2f2f2;
+}
+
+button {
+  @apply rounded-md px-3 py-2 text-sm font-medium;
+}
