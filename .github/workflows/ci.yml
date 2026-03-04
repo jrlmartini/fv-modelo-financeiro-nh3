@@ -24,4 +24,4 @@ jobs:
       - name: Run unit tests (no dependency install required)
         env:
           NODE_OPTIONS: --max-old-space-size=512
-        run: node --experimental-strip-types --test --test-concurrency=1 tests/*.test.ts
+        run: npm test
