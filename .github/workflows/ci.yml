@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: ["gh-pages"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Show Node/npm versions
+        run: |
+          node -v
+          npm -v
+
+      - name: Run unit tests (no dependency install required)
+        env:
+          NODE_OPTIONS: --max-old-space-size=512
+        run: npm test
